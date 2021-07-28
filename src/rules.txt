@@ -1,0 +1,43 @@
+***CORE ASSUPMTIONS***
+A character can be involved only in one
+intrigue at a time and can benefit only from the
+effects of one party sheet at a time.
+
+ORGANIZATION
+An organization is a domain built around the
+officers who founded it—the player characters. 
+
+DOMAIN
+A domain is described 
+by its collection of skills, defenses, domain
+powers, and domain features, as well as its size.
+
+SKILLS
+Diplomacy, Espionage, Lore, Operations
+
+DEFENSES
+Communications, Resolve, Resources
+
+DOMAIN POWERS
+Each domain also grants its officers access to special domain powers they can use in combat. Each
+officer gets a power die that they roll at the beginning of any combat against one or more officers of
+an opposed domain. The roll goes into a power
+pool shared by all the officers of a domain, with
+these dice fueling each character’s domain powers.
+
+FEATURES
+Every domain also provides a number of unique
+domain features that officers can make use of
+during intrigue, allowing the domain to affect the
+opposed domain’s defenses and units, to muster special units, and make other preparations for battle.
+
+SIZE
+Each domain has a size that determines
+how many turns it can take during intrigue, how
+large its officers’ power dice are, and the scope of
+certain benefits available to the domain’s army
+
+INTRIGUE
+Any domain skill that requires
+targeting a villainous realm (including its agents,
+libraries, and lands) should start intrigue.

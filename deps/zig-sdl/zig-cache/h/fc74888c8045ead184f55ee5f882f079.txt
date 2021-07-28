@@ -1,0 +1,9 @@
+9058 3659174697593293 1627401783306352000 a70d7eceeaf22fe16bd0a0974674a2bf C:\Users\shous\workspace\kingdoms\deps\zig-sdl\src\audio\fusionsound\SDL_fsaudio.c
+9058 3659174697593293 1627401783306352000 a70d7eceeaf22fe16bd0a0974674a2bf C:\Users\shous\workspace\kingdoms\deps\zig-sdl\src\audio\fusionsound\SDL_fsaudio.c
+1880 3659174697593048 1627401783265351900 a066d5a9a42f0a9849b0c200177c353d C:\Users\shous\workspace\kingdoms\deps\zig-sdl\src\SDL_internal.h
+2928 3940649674304474 1627401783381352700 ccc2d8a3a5cae2ded062f74030f13c0e C:\Users\shous\workspace\kingdoms\deps\zig-sdl\src\dynapi\SDL_dynapi.h
+36396 3940649674304481 1627401783382352600 fb539ab2c2104de45351d11bea23f733 C:\Users\shous\workspace\kingdoms\deps\zig-sdl\src\dynapi\SDL_dynapi_overrides.h
+12740 5066549581162312 1627401784784990300 b9e78fd3e73b2a2a902a177df666f9b8 C:\Users\shous\workspace\kingdoms\deps\zig-sdl\zig-prebuilt\x86_64-windows-gnu\SDL_config.h
+5401 3940649674303316 1627401783217351300 c82e0fd6c00e239dfbffd2dc404bb8d0 C:\Users\shous\workspace\kingdoms\deps\zig-sdl\include\SDL_platform.h
+4898 3940649674303594 1627401783252353300 88c15ff7964e237ec9aba2ddebf4b7fd C:\Users\shous\workspace\kingdoms\deps\zig-sdl\include\begin_code.h
+1429 3659174697592942 1627401783252353300 6ebc0caf5b288fef88af84e25f6bd334 C:\Users\shous\workspace\kingdoms\deps\zig-sdl\include\close_code.h

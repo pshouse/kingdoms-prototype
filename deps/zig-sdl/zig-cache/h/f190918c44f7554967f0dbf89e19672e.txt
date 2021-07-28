@@ -1,0 +1,2 @@
+7693814 1970324837590120 1627431794300641700 7847ab7c782e27a7e1aabb6b5089b2cc C:\Users\shous\workspace\kingdoms\deps\zig-sdl\zig-cache\o\26184098ebc8e805e5c56cf78e14bfe7\SDL2.lib
+1466406 1970324837590141 1627432025968153400 3d1a2fb8e0035f090c26ee3340a8b3f5 C:\Users\shous\workspace\kingdoms\deps\zig-sdl\zig-cache\o\b53404293d0132d215fd556edd3115f1\sdl-zig-demo.obj
