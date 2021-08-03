@@ -196,9 +196,9 @@ static void stb_easy_font_spacing(float spacing)
    stb_easy_font_spacing_val = spacing;
 }
 
-static int stb_easy_font_print(float x, float y, char *text, unsigned char color[4], void *vertex_buffer, int vbuf_size)
+static int stb_easy_font_print(float x, float y, const char *text, unsigned char color[4], char *vbuf, int vbuf_size)
 {
-    char *vbuf = (char *) vertex_buffer;
+    // char *vbuf = (char *) vertex_buffer;
     float start_x = x;
     int offset = 0;
 
@@ -227,7 +227,7 @@ static int stb_easy_font_print(float x, float y, char *text, unsigned char color
     return (unsigned) offset/64;
 }
 
-static int stb_easy_font_width(char *text)
+static int stb_easy_font_width(const char *text)
 {
     float len = 0;
     float max_len = 0;

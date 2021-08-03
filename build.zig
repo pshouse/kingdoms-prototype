@@ -13,7 +13,7 @@ pub fn build(b: *std.build.Builder) void {
 
     const exe = b.addExecutable("kingdoms", "src/main.zig");
     exe.addCSourceFile("deps/stb_image.c", &[_][]const u8{ "-std=c99"});
-    exe.addCSourceFile("deps/stb_easy_font.c", &[_][]const u8{ "-std=c99"});
+    exe.addCSourceFile("deps/stb_truetype.c", &[_][]const u8{ "-std=c99"});
     exe.addIncludeDir("deps");
     exe.setTarget(target);
     exe.setBuildMode(mode);

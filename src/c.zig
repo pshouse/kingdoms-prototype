@@ -3,5 +3,5 @@ pub usingnamespace @cImport({
     @cDefine("STBI_ONLY_PNG", "");
     @cDefine("STBI_NO_STDIO", "");
     @cInclude("stb_image.h");
-    @cInclude("stb_easy_font.h");
+    @cInclude("stb_truetype.h");
 });
