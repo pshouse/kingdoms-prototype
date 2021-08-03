@@ -89,40 +89,57 @@ pub fn main() anyerror!void {
         sdlAssertZero(c.SDL_RenderCopy(renderer, stronghold_texture, &src_rect, &dest_rect));
         
         // render some text
-        const text = "Huljo, yes!?\n";
+        // const text = "Huljo, yes!?\n";
         // const text = "Hu";
         // std.debug.warn(text, .{});
+        try drawText(info, 10, 10,"Greetings adventurer!\nYou've been granted a stronghold.", allocator, renderer);
+        
 
-        var b_w: i32 = undefined;
-        var b_h: i32 = undefined;
-        const l_h: i32 = 64;
+        // const text_pitch = b_w * 4; // width * bits_per_channel * channel_count / 8
+        // const text_surface = c.SDL_CreateRGBSurfaceFrom(test_bitmap, b_w, b_h, 32, text_pitch, 0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000);
+        // const text_surface = c.SDL_CreateRGBSurfaceFrom(bitmap, b_w, b_h, 8, b_w, 0, 0, 0, 0xff);
+        // const text_texture = c.SDL_CreateTextureFromSurface(renderer, text_surface) orelse std.debug.panic("unable to convert surface to texture", .{});
+        // sdlAssertZero(c.SDL_SetTextureBlendMode(text_texture, c.SDL_BLENDMODE_BLEND));        
+        
+        c.SDL_RenderPresent(renderer);
+    }
+}
+fn drawText(info: c.stbtt_fontinfo, x0: i32, y0: i32, text:  []const u8, allocator: *std.mem.Allocator, renderer: *c.SDL_Renderer) anyerror!void {
+    var b_w: i32 = undefined;
+    var b_h: i32 = undefined;
+    const l_h: i32 = 64;
 
-        var bitmap: [*]u8 = undefined;
+    var bitmap: [*]u8 = undefined;
 
-        var scale: f32 = c.stbtt_ScaleForPixelHeight(&info, l_h);
+    var scale: f32 = c.stbtt_ScaleForPixelHeight(&info, l_h);
 
-        var ascent: i32 = undefined;
-        var descent: i32 = undefined;
-        var lineGap: i32 = undefined;
+    var ascent: i32 = undefined;
+    var descent: i32 = undefined;
+    var lineGap: i32 = undefined;
 
-        c.stbtt_GetFontVMetrics(&info, &ascent, &descent, &lineGap);
-        ascent = @floatToInt(i32, std.math.round(@intToFloat(f32, ascent) * scale));
-        descent = @floatToInt(i32, std.math.round(@intToFloat(f32, descent) * scale));
-        var x: i32 = 0;
+    c.stbtt_GetFontVMetrics(&info, &ascent, &descent, &lineGap);
+    ascent = @floatToInt(i32, std.math.round(@intToFloat(f32, ascent) * scale));
+    descent = @floatToInt(i32, std.math.round(@intToFloat(f32, descent) * scale));
+    var x: i32 = x0;
+    var y_base: i32 = y0;
 
-        for (text) |char, i| {
-            var ax: i32 = 0;
-            var lsb: i32 = 0;
-            c.stbtt_GetCodepointHMetrics(&info, char, &ax, &lsb);
+    for (text) |char| {
+        var ax: i32 = 0;
+        var lsb: i32 = 0;
+        c.stbtt_GetCodepointHMetrics(&info, char, &ax, &lsb);
 
-            var c_x1: i32 = 0;
-            var c_y1: i32 = 0;
-            var c_x2: i32 = 0;
-            var c_y2: i32 = 0;
-            c.stbtt_GetCodepointBitmapBox(&info, char, scale, scale, &c_x1, &c_y1, &c_x2, &c_y2);
+        var c_x1: i32 = 0;
+        var c_y1: i32 = 0;
+        var c_x2: i32 = 0;
+        var c_y2: i32 = 0;
+        c.stbtt_GetCodepointBitmapBox(&info, char, scale, scale, &c_x1, &c_y1, &c_x2, &c_y2);
 
-            var y: i32 = ascent + c_y1;
-
+        // var y: i32 = ascent + c_y1;
+        var y: i32 = y_base + ascent + c_y1;
+        if (char == '\n') {
+            y_base += l_h;
+            x = x0; 
+        } else { 
             if (c_x2 > 0 or c_y2 >0)  { //check for empty bitmap
                 bitmap = c.stbtt_GetCodepointBitmap(&info, 0.0, scale, char, &b_w, &b_h, 0, 0);
             
@@ -138,7 +155,7 @@ pub fn main() anyerror!void {
                     try argb_bitmap.append(bitmap[b_i]);
                     b_i+=1;
                 }
-               
+                
                 sdlAssertZero(c.SDL_UpdateTexture(text_texture, 0, argb_bitmap.items.ptr, b_w*4));
                 const text_src_rect = c.SDL_Rect{
                     .x = 0,
@@ -155,22 +172,13 @@ pub fn main() anyerror!void {
                 sdlAssertZero(c.SDL_RenderCopy(renderer, text_texture, &text_src_rect, &text_dest_rect));
             }
             x += @floatToInt(c_int, std.math.round(@intToFloat(f32, ax) * scale));
-
-            var kern: c_int = c.stbtt_GetCodepointKernAdvance(&info, text[i], text[i+1]);
-            x += @floatToInt(c_int, std.math.round(@intToFloat(f32, kern) * scale));
         }
-
-
-        // const text_pitch = b_w * 4; // width * bits_per_channel * channel_count / 8
-        // const text_surface = c.SDL_CreateRGBSurfaceFrom(test_bitmap, b_w, b_h, 32, text_pitch, 0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000);
-        // const text_surface = c.SDL_CreateRGBSurfaceFrom(bitmap, b_w, b_h, 8, b_w, 0, 0, 0, 0xff);
-        // const text_texture = c.SDL_CreateTextureFromSurface(renderer, text_surface) orelse std.debug.panic("unable to convert surface to texture", .{});
-        // sdlAssertZero(c.SDL_SetTextureBlendMode(text_texture, c.SDL_BLENDMODE_BLEND));        
-        
-        c.SDL_RenderPresent(renderer);
+        // TODO: figure out how to get this working.
+        // var kern: c_int = c.stbtt_GetCodepointKernAdvance(&info, text[i], text[i+1]);
+        // x += @floatToInt(c_int, std.math.round(@intToFloat(f32, kern) * scale));
     }
-}
 
+}
 fn sdlAssertZero(ret: c_int) void {
     if (ret == 0) return;
     std.debug.panic("sdl function returned an error: {s}\n", .{c.SDL_GetError()});
