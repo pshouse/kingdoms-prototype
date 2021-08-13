@@ -12,10 +12,23 @@ const Stronghold = struct {
     w: i32,
     h: i32,
 };
+
+const GlyphMapEntry = struct {
+    w: i32,
+    h: i32,
+    bitmap: std.ArrayList(u8),
+};
+
 pub fn main() anyerror!void {
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
-    var allocator = &arena.allocator;
+    // var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    // defer arena.deinit();
+    // var allocator = &arena.allocator;
+    var allocator = std.heap.page_allocator;
+    
+
+    var glyph_map = std.AutoHashMap(u8, GlyphMapEntry).init(allocator);
+    defer glyph_map.deinit();
+
     //std.log.info("All your domain are belong to us.", .{});
     // if (!(c.SDL_SetHintWithPriority(c.SDL_HINT_NO_SIGNAL_HANDLERS, "1" , c.SDL_HintPriority.SDL_HINT_OVERRIDE) != c.SDL_bool.SDL_FALSE)) {
     //     std.debug.panic("failed to disable sdl signal handlers\n", .{});
@@ -23,6 +36,7 @@ pub fn main() anyerror!void {
 
     // Initialize TTF
     // var info: c.stbtt_fontinfo = undefined;
+    
     var info: c.stbtt_fontinfo = undefined;
     const init_result = c.stbtt_InitFont(&info, font_data,0);
     if (init_result != 1) {
@@ -89,25 +103,22 @@ pub fn main() anyerror!void {
         sdlAssertZero(c.SDL_RenderCopy(renderer, stronghold_texture, &src_rect, &dest_rect));
         
         // render some text
-        // const text = "Huljo, yes!?\n";
-        // const text = "Hu";
-        // std.debug.warn(text, .{});
-        try drawText(info, 10, 10,"Greetings adventurer!\nYou've been granted a stronghold.", allocator, renderer);
-        
-
-        // const text_pitch = b_w * 4; // width * bits_per_channel * channel_count / 8
-        // const text_surface = c.SDL_CreateRGBSurfaceFrom(test_bitmap, b_w, b_h, 32, text_pitch, 0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000);
-        // const text_surface = c.SDL_CreateRGBSurfaceFrom(bitmap, b_w, b_h, 8, b_w, 0, 0, 0, 0xff);
-        // const text_texture = c.SDL_CreateTextureFromSurface(renderer, text_surface) orelse std.debug.panic("unable to convert surface to texture", .{});
-        // sdlAssertZero(c.SDL_SetTextureBlendMode(text_texture, c.SDL_BLENDMODE_BLEND));        
+        // NOTE: passing glyph_map instead of &glyph_map doesn't compile because parameters are immutable
+        try drawText(info, 10, 10,
+            "Greetings adventurer!\nYou've been granted a stronghold.", 
+            allocator, renderer, &glyph_map);
         
         c.SDL_RenderPresent(renderer);
     }
 }
-fn drawText(info: c.stbtt_fontinfo, x0: i32, y0: i32, text:  []const u8, allocator: *std.mem.Allocator, renderer: *c.SDL_Renderer) anyerror!void {
+
+fn drawText(info: c.stbtt_fontinfo, x0: i32, y0: i32, 
+    text:  []const u8, allocator: *std.mem.Allocator, 
+    renderer: *c.SDL_Renderer, glyph_map: *std.AutoHashMap(u8, GlyphMapEntry)) anyerror!void {
+
     var b_w: i32 = undefined;
     var b_h: i32 = undefined;
-    const l_h: i32 = 64;
+    const l_h: i32 = 32;
 
     var bitmap: [*]u8 = undefined;
 
@@ -134,42 +145,58 @@ fn drawText(info: c.stbtt_fontinfo, x0: i32, y0: i32, text:  []const u8, allocat
         var c_y2: i32 = 0;
         c.stbtt_GetCodepointBitmapBox(&info, char, scale, scale, &c_x1, &c_y1, &c_x2, &c_y2);
 
-        // var y: i32 = ascent + c_y1;
         var y: i32 = y_base + ascent + c_y1;
         if (char == '\n') {
             y_base += l_h;
             x = x0; 
         } else { 
             if (c_x2 > 0 or c_y2 >0)  { //check for empty bitmap
-                bitmap = c.stbtt_GetCodepointBitmap(&info, 0.0, scale, char, &b_w, &b_h, 0, 0);
-            
-                const text_texture = c.SDL_CreateTexture(renderer, c.SDL_PIXELFORMAT_ARGB8888, c.SDL_TEXTUREACCESS_STREAMING, b_w, b_h);
-                var argb_bitmap = std.ArrayList(u8).init(allocator);
-                var num_bytes = b_w*b_h;
-                var b_i: usize = 0;
-                // @compileLog(@TypeOf(bitmap));
-                while (b_i<num_bytes) {
-                    try argb_bitmap.append(bitmap[b_i]);
-                    try argb_bitmap.append(bitmap[b_i]);
-                    try argb_bitmap.append(bitmap[b_i]);
-                    try argb_bitmap.append(bitmap[b_i]);
-                    b_i+=1;
-                }
+                if (!glyph_map.contains(char)) {
+                    bitmap = c.stbtt_GetCodepointBitmap(&info, 0.0, scale, char, &b_w, &b_h, 0, 0);
                 
-                sdlAssertZero(c.SDL_UpdateTexture(text_texture, 0, argb_bitmap.items.ptr, b_w*4));
-                const text_src_rect = c.SDL_Rect{
-                    .x = 0,
-                    .y = 0,
-                    .w = b_w,
-                    .h = b_h,
-                };
-                const text_dest_rect = c.SDL_Rect{
-                    .x = x,
-                    .y = y,
-                    .w = b_w,
-                    .h = b_h,
-                };
-                sdlAssertZero(c.SDL_RenderCopy(renderer, text_texture, &text_src_rect, &text_dest_rect));
+                    var argb_bitmap = std.ArrayList(u8).init(allocator);
+                    var num_bytes = b_w*b_h;
+                    var b_i: usize = 0;
+                    
+                    while (b_i<num_bytes) {
+                        try argb_bitmap.append(bitmap[b_i]);
+                        try argb_bitmap.append(bitmap[b_i]);
+                        try argb_bitmap.append(bitmap[b_i]);
+                        try argb_bitmap.append(bitmap[b_i]);
+                        b_i+=1;
+                    }
+                    
+                    var new_entry: GlyphMapEntry = .{
+                        .w = b_w,
+                        .h = b_h,
+                        .bitmap = argb_bitmap,
+                    };
+                    
+                    try glyph_map.put(char, new_entry);
+
+                } 
+                
+                if(glyph_map.get(char)) |result| {
+                    const text_texture = c.SDL_CreateTexture(
+                        renderer, c.SDL_PIXELFORMAT_ARGB8888, 
+                        c.SDL_TEXTUREACCESS_STREAMING, result.w, result.h
+                    );
+                    sdlAssertZero(c.SDL_UpdateTexture(text_texture, 0, result.bitmap.items.ptr, result.w*4));
+                   
+                    const text_src_rect = c.SDL_Rect{
+                        .x = 0,
+                        .y = 0,
+                        .w = b_w,
+                        .h = b_h,
+                    };
+                    const text_dest_rect = c.SDL_Rect{
+                        .x = x,
+                        .y = y,
+                        .w = b_w,
+                        .h = b_h,
+                    };
+                    sdlAssertZero(c.SDL_RenderCopy(renderer, text_texture, &text_src_rect, &text_dest_rect));
+                }
             }
             x += @floatToInt(c_int, std.math.round(@intToFloat(f32, ax) * scale));
         }
