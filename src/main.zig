@@ -154,7 +154,9 @@ fn drawText(info: c.stbtt_fontinfo, x0: i32, y0: i32,
                 if (!glyph_map.contains(char)) {
                     bitmap = c.stbtt_GetCodepointBitmap(&info, 0.0, scale, char, &b_w, &b_h, 0, 0);
                 
+                    // var argb_bitmap = std.ArrayList(u8).init(allocator);
                     var argb_bitmap = std.ArrayList(u8).init(allocator);
+                    // defer argb_bitmap.deinit();
                     var num_bytes = b_w*b_h;
                     var b_i: usize = 0;
                     
@@ -175,25 +177,26 @@ fn drawText(info: c.stbtt_fontinfo, x0: i32, y0: i32,
                     try glyph_map.put(char, new_entry);
 
                 } 
-                
                 if(glyph_map.get(char)) |result| {
                     const text_texture = c.SDL_CreateTexture(
                         renderer, c.SDL_PIXELFORMAT_ARGB8888, 
                         c.SDL_TEXTUREACCESS_STREAMING, result.w, result.h
                     );
+                    defer c.SDL_DestroyTexture(text_texture);
+                
                     sdlAssertZero(c.SDL_UpdateTexture(text_texture, 0, result.bitmap.items.ptr, result.w*4));
                    
                     const text_src_rect = c.SDL_Rect{
                         .x = 0,
                         .y = 0,
-                        .w = b_w,
-                        .h = b_h,
+                        .w = result.w,
+                        .h = result.h ,
                     };
                     const text_dest_rect = c.SDL_Rect{
                         .x = x,
                         .y = y,
-                        .w = b_w,
-                        .h = b_h,
+                        .w = result.w,
+                        .h = result.h,
                     };
                     sdlAssertZero(c.SDL_RenderCopy(renderer, text_texture, &text_src_rect, &text_dest_rect));
                 }
