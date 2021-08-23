@@ -19,13 +19,67 @@ const GlyphMapEntry = struct {
     bitmap: std.ArrayList(u8),
 };
 
+const OrgType = enum {party, regiment, guild, circle, pact, court, order, syndicate};
+const orgLabels: [8][]const u8 = .{
+    "Adventuring Party",
+    "Martial Regiment",
+    "Mercantile Guild",
+    "Mystic Circle",
+    "Nature Pact",
+    "Noble Court",
+    "Relious Order",
+    "Underworld Syndicate",
+};
+
+const Org = struct {
+    type: OrgType,
+    size: i32,
+    label: []const u8,
+};
+
+const Orgs = std.MultiArrayList(Org);
+
+const Player = struct {
+    org: Org,
+
+};
 pub fn main() anyerror!void {
     // var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     // defer arena.deinit();
     // var allocator = &arena.allocator;
     var allocator = std.heap.page_allocator;
     
+    var orgs = Orgs{};
+    defer orgs.deinit(allocator);
+    
+    // const party = Org {
+    //     .type = OrgType.party,
+    //     .size = 1,
+    // };
+    // const indices = [_]i32 {0,1,2,3,4,5,6,7};
+    // std.debug.print("{s}\n", .{orgLabels[0]});
+    for (std.enums.values(OrgType)) |orgType, i| {
+        const org = Org {
+            .type = orgType,
+            .size = 1,
+            .label = orgLabels[i],
 
+        };
+        try orgs.append(allocator, org);
+    }
+    
+    var player = Player{
+        .org = undefined,
+    };
+    // std.debug.assert(orgs.get(0).type==party.type);
+    // 
+    // for (orgs) |org| {
+    //     std.debug.print("{s}", .{org});
+    // }
+    // var i: usize = 0;
+    // while (i < orgs.len) : (i +=1 ) {
+    //     std.debug.print("{s}\n", .{orgs.get(i)});
+    // }
     var glyph_map = std.AutoHashMap(u8, GlyphMapEntry).init(allocator);
     defer glyph_map.deinit();
 
@@ -83,6 +137,18 @@ pub fn main() anyerror!void {
         while (c.SDL_PollEvent(&event) != 0) {
             switch (event.@"type") {
                 c.SDL_QUIT => return,
+                c.SDL_KEYDOWN => {
+                    switch (event.key.keysym.scancode) {
+                        c.SDL_SCANCODE_ESCAPE => return,
+                        30...37 => {
+                            var selected_org = orgs.get(event.key.keysym.scancode - 30);
+                            std.debug.print("Selected: {s}\n", .{selected_org.label});
+                            player.org = selected_org;
+                        },
+                        //c.SDL_SCANCODE_2 => std.debug.print("Selected: {s}\n", .{orgs.get(1).label}),
+                        else => std.debug.warn("key pressed: {}\n", .{event.key.keysym.scancode}),
+                    }
+                },
                 else => {},
             }
         }
@@ -105,9 +171,20 @@ pub fn main() anyerror!void {
         // render some text
         // NOTE: passing glyph_map instead of &glyph_map doesn't compile because parameters are immutable
         try drawText(info, 10, 10,
-            "Greetings adventurer!\nYou've been granted a stronghold.", 
+            "Greetings adventurer!\nYou've been granted a stronghold.\nTo found your new domain, choose a type:\n", 
             allocator, renderer, &glyph_map);
-        
+        // const y: usize = 10 + 3 * 32;
+
+        for(orgLabels) |label, j| {
+            var buffer: [100]u8 = undefined;
+            const choices = try std.fmt.bufPrint(&buffer,"{d} ~ {s}", .{@intCast(i32, j)+1, label});
+            // std.debug.print("{s}", .{slice});
+            try drawText(
+                info, 32, (10+3*32)+@intCast(i32, j)*32,
+                choices,
+                allocator, renderer, &glyph_map
+            );
+        }
         c.SDL_RenderPresent(renderer);
     }
 }
