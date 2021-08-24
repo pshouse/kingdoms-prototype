@@ -43,6 +43,18 @@ const Player = struct {
     org: Org,
 
 };
+
+const GameState = enum(u2) {
+    greetings,
+    stronghold_acquired,
+    choose_org,
+    org_founded,
+};
+
+const Game = struct {
+    state: GameState,
+    time: u64,
+};
 pub fn main() anyerror!void {
     // var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     // defer arena.deinit();
@@ -71,6 +83,12 @@ pub fn main() anyerror!void {
     var player = Player{
         .org = undefined,
     };
+
+    var game = Game {
+        .state = GameState.greetings,
+        .time = 0,
+    };
+
     // std.debug.assert(orgs.get(0).type==party.type);
     // 
     // for (orgs) |org| {
@@ -141,9 +159,13 @@ pub fn main() anyerror!void {
                     switch (event.key.keysym.scancode) {
                         c.SDL_SCANCODE_ESCAPE => return,
                         30...37 => {
-                            var selected_org = orgs.get(event.key.keysym.scancode - 30);
-                            std.debug.print("Selected: {s}\n", .{selected_org.label});
-                            player.org = selected_org;
+                            if (game.state == GameState.choose_org) {
+                                var selected_org = orgs.get(event.key.keysym.scancode - 30);
+                                std.debug.print("Selected: {s}\n", .{selected_org.label});
+                                player.org = selected_org;
+                                game.state = GameState.org_founded;
+                            }
+                            
                         },
                         //c.SDL_SCANCODE_2 => std.debug.print("Selected: {s}\n", .{orgs.get(1).label}),
                         else => std.debug.warn("key pressed: {}\n", .{event.key.keysym.scancode}),
@@ -166,26 +188,49 @@ pub fn main() anyerror!void {
             .w = stronghold.w,
             .h = stronghold.h,
         };
-        sdlAssertZero(c.SDL_RenderCopy(renderer, stronghold_texture, &src_rect, &dest_rect));
+
+        if (game.state == GameState.stronghold_acquired ) {
+            try drawText(info, 10, 10,
+                "You have acquired a STRONGHOLD.",
+                allocator, renderer, &glyph_map
+            );
+            
+            if (30*10 < game.time ) game.state = GameState.choose_org;
+        }
+
+        if (@enumToInt(game.state) >= @enumToInt(GameState.stronghold_acquired)) sdlAssertZero(c.SDL_RenderCopy(renderer, stronghold_texture, &src_rect, &dest_rect));
         
         // render some text
         // NOTE: passing glyph_map instead of &glyph_map doesn't compile because parameters are immutable
-        try drawText(info, 10, 10,
-            "Greetings adventurer!\nYou've been granted a stronghold.\nTo found your new domain, choose a type:\n", 
+        // place holder text courtsy: https://lotremipsum.com/result-basic.php
+        if (game.state == GameState.greetings) {
+            try drawText(info, 10, 10,
+            "Greetings adventurer!\n\nHelm Hammerhand awake iron cost hunting clear must.\nDwalin forebearers precautions shovel liege goes.Arod \nmorbid roads. Reached signature Goblin-mutant?", 
             allocator, renderer, &glyph_map);
+            if (30*2 < game.time) game.state = GameState.stronghold_acquired;
+        }
+        
         // const y: usize = 10 + 3 * 32;
-
-        for(orgLabels) |label, j| {
-            var buffer: [100]u8 = undefined;
-            const choices = try std.fmt.bufPrint(&buffer,"{d} ~ {s}", .{@intCast(i32, j)+1, label});
-            // std.debug.print("{s}", .{slice});
-            try drawText(
-                info, 32, (10+3*32)+@intCast(i32, j)*32,
-                choices,
+        if (game.state == GameState.choose_org) {
+            try drawText(info, 10, 10,
+                "Found a DOMAIN of your choosing:",
                 allocator, renderer, &glyph_map
             );
+            for(orgLabels) |label, j| {
+                var buffer: [100]u8 = undefined;
+                const choices = try std.fmt.bufPrint(&buffer,"{d} ~ {s}", .{@intCast(i32, j)+1, label});
+                // std.debug.print("{s}", .{slice});
+                try drawText(
+                    info, 32, (10+1*32)+@intCast(i32, j)*32,
+                    choices,
+                    allocator, renderer, &glyph_map
+                );
+            }
         }
+        
         c.SDL_RenderPresent(renderer);
+        game.time += 1;
+        // std.debug.print("{d}\n", .{game.time});
     }
 }
 
