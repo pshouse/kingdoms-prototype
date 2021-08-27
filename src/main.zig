@@ -1,4 +1,3 @@
-
 const std = @import("std");
 const c = @import("c.zig");
 
@@ -35,41 +34,72 @@ const Org = struct {
     type: OrgType,
     size: i32,
     label: []const u8,
+    pub fn turns() i32 {
+        return size + 4;
+    }
+};
+const Orgs = std.MultiArrayList(Org);
+
+const RealmType = enum {despotic_regime, draconic_empire, dwarven_thanedom, fey_court, giant_jarldom, 
+                    gnomish_kingdom, goblinoid_coalition, hag_coven, infernal_eschelon, medusean_tyranny,
+                    orc_clan, planar_invaders, reptialian_band, undead_dominion, undersea_colony, world_below_city_state};
+const realmLabels: [16][]const u8 = .{
+    "Despotic Regime", 
+    "Draconic Empire", 
+    "Dwarven Thanedom", 
+    "Fey Court", 
+    "Giant Jarldom",
+    "Gnomish Kingdom", 
+    "Goblinoid Coalition", 
+    "Hag Coven", 
+    "Infernal Eschelon", 
+    "Medusean Tyranny",
+    "Orc Clan", 
+    "Planar Invaders", 
+    "Reptialian Band", 
+    "Undead Dominion", 
+    "Undersea Colony", 
+    "World Below City-State",
 };
 
-const Orgs = std.MultiArrayList(Org);
+const Realm = struct {
+    type: RealmType,
+    size: i32,
+    label: []const u8,
+    pub fn turns() i32 {
+        return size + 4;
+    }
+};
+
+const Realms = std.MultiArrayList(Realm);
 
 const Player = struct {
     org: Org,
-
 };
 
-const GameState = enum(u2) {
+const Enemy = struct {
+    realm: Realm,
+};
+
+const GameState = enum(u32) {
     greetings,
     stronghold_acquired,
     choose_org,
     org_founded,
+    realm_founded,
 };
 
 const Game = struct {
     state: GameState,
     time: u64,
 };
+
 pub fn main() anyerror!void {
-    // var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    // defer arena.deinit();
-    // var allocator = &arena.allocator;
     var allocator = std.heap.page_allocator;
     
     var orgs = Orgs{};
     defer orgs.deinit(allocator);
     
-    // const party = Org {
-    //     .type = OrgType.party,
-    //     .size = 1,
-    // };
-    // const indices = [_]i32 {0,1,2,3,4,5,6,7};
-    // std.debug.print("{s}\n", .{orgLabels[0]});
     for (std.enums.values(OrgType)) |orgType, i| {
         const org = Org {
             .type = orgType,
@@ -84,20 +114,28 @@ pub fn main() anyerror!void {
         .org = undefined,
     };
 
+    var realms = Realms{};
+    defer realms.deinit(allocator);
+
+    for (std.enums.values(RealmType)) |realmType, i| {
+        const realm = Realm {
+            .type = realmType,
+            .size = 1,
+            .label = realmLabels[i],
+        };
+        try realms.append(allocator, realm);
+    }
+    
+    var realm_selected: u32 = std.crypto.random.intRangeAtMost(u32, 0, 15);
+    var enemy = Enemy {
+        .realm = realms.get(realm_selected),
+    };
+
     var game = Game {
         .state = GameState.greetings,
         .time = 0,
     };
 
-    // std.debug.assert(orgs.get(0).type==party.type);
-    // 
-    // for (orgs) |org| {
-    //     std.debug.print("{s}", .{org});
-    // }
-    // var i: usize = 0;
-    // while (i < orgs.len) : (i +=1 ) {
-    //     std.debug.print("{s}\n", .{orgs.get(i)});
-    // }
     var glyph_map = std.AutoHashMap(u8, GlyphMapEntry).init(allocator);
     defer glyph_map.deinit();
 
@@ -122,20 +160,30 @@ pub fn main() anyerror!void {
     if (c.SDL_Init(c.SDL_INIT_VIDEO | c.SDL_INIT_EVENTS | c.SDL_INIT_AUDIO) < 0)
         {std.debug.panic("SDL_Init failed: {s}\n", .{c.SDL_GetError()});}
     defer c.SDL_Quit();
+    
+    const Screen = struct {
+        w: i32,
+        h: i32,
+    };
 
-    const screen = c.SDL_CreateWindow(
+    const screen: Screen =  .{
+        .w = 800,
+        .h = 600,
+    };
+    
+    const window = c.SDL_CreateWindow(
         "K1ngd0m5",
         c.SDL_WINDOWPOS_UNDEFINED,
         c.SDL_WINDOWPOS_UNDEFINED,
-        800,
-        600,
+        screen.w,
+        screen.h,
         c.SDL_WINDOW_RESIZABLE,
     ) orelse {
         std.debug.panic("SDL_CreateWindow failed: {s}\n", .{c.SDL_GetError()});
     };
-    defer c.SDL_DestroyWindow(screen);
+    defer c.SDL_DestroyWindow(window);
 
-    const renderer: *c.SDL_Renderer = c.SDL_CreateRenderer(screen, -1, 0) orelse {
+    const renderer: *c.SDL_Renderer = c.SDL_CreateRenderer(window, -1, 0) orelse {
         std.debug.panic("SDL_CreateRenderer failed: {s}", .{c.SDL_GetError()});
     };
     defer c.SDL_DestroyRenderer(renderer);
@@ -144,8 +192,8 @@ pub fn main() anyerror!void {
     const stronghold_texture = c.SDL_CreateTextureFromSurface(renderer, stronghold_surface) orelse std.debug.panic("unable to convert surface to texture", .{});
     
     const stronghold = Stronghold {
-        .x = 400,
-        .y = 400,
+        .x = (screen.w/2) - (148/2),
+        .y = 425,
         .w = 148,
         .h = 128,
     };
@@ -198,8 +246,35 @@ pub fn main() anyerror!void {
             if (30*10 < game.time ) game.state = GameState.choose_org;
         }
 
-        if (@enumToInt(game.state) >= @enumToInt(GameState.stronghold_acquired)) sdlAssertZero(c.SDL_RenderCopy(renderer, stronghold_texture, &src_rect, &dest_rect));
+        if (@enumToInt(game.state) >= @enumToInt(GameState.stronghold_acquired)) {
+
+            sdlAssertZero(c.SDL_RenderCopy(renderer, stronghold_texture, &src_rect, &dest_rect));
+            
+            if (@enumToInt(game.state) >= @enumToInt(GameState.org_founded)) {
+                var buf: [105]u8 = undefined;
+                const msg = try std.fmt.bufPrint(&buf, "Your {s}", .{player.org.label});
+                try drawText(info, stronghold.x, stronghold.y+stronghold.h+10, 
+                    msg, allocator, renderer, &glyph_map);
+                game.state = GameState.realm_founded;
+            }
+        }
         
+        if (@enumToInt(game.state) >= @enumToInt(GameState.org_founded)) {
+            const realm_dest = c.SDL_Rect{
+                .x = stronghold.x,
+                .y = stronghold.y  - 400,
+                .w = stronghold.w,
+                .h = stronghold.h,
+            };  
+            sdlAssertZero(c.SDL_RenderCopy(renderer, stronghold_texture, &src_rect, &realm_dest));
+            
+            var buf: [105]u8 = undefined;
+            const msg = try std.fmt.bufPrint(&buf, "{s}", .{enemy.realm.label});
+            try drawText(info, stronghold.x, realm_dest.y+realm_dest.h+10, 
+                msg, allocator, renderer, &glyph_map);
+            //    game.state = GameState.realm_founded;
+            
+        }
         // render some text
         // NOTE: passing glyph_map instead of &glyph_map doesn't compile because parameters are immutable
         // place holder text courtsy: https://lotremipsum.com/result-basic.php
