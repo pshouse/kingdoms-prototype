@@ -1,5 +1,6 @@
 const std = @import("std");
 const c = @import("c.zig");
+const unit = @import("unit.zig");
 
 const stronghold_png_data = @embedFile("../assets/graphics/buildings/Seats-of-power.png");
 
@@ -34,6 +35,8 @@ const Org = struct {
     type: OrgType,
     size: i32,
     label: []const u8,
+    dev_points: i32,
+    units: [4]unit.Unit,
     pub fn turns() i32 {
         return size + 4;
     }
@@ -87,6 +90,8 @@ const GameState = enum(u32) {
     choose_org,
     org_founded,
     realm_founded,
+    dev_points_spent,
+    tier_i_units_mustered,
 };
 
 const Game = struct {
@@ -105,7 +110,8 @@ pub fn main() anyerror!void {
             .type = orgType,
             .size = 1,
             .label = orgLabels[i],
-
+            .dev_points = 8,
+            .units = undefined,
         };
         try orgs.append(allocator, org);
     }
@@ -126,7 +132,8 @@ pub fn main() anyerror!void {
         try realms.append(allocator, realm);
     }
     
-    var realm_selected: u32 = std.crypto.random.intRangeAtMost(u32, 0, 15);
+    // var realm_selected: u32 = std.crypto.random.intRangeAtMost(u32, 0, 15);
+    const realm_selected: u32 = 13;
     var enemy = Enemy {
         .realm = realms.get(realm_selected),
     };
@@ -207,11 +214,19 @@ pub fn main() anyerror!void {
                     switch (event.key.keysym.scancode) {
                         c.SDL_SCANCODE_ESCAPE => return,
                         30...37 => {
+                            var i: u32 = event.key.keysym.scancode - 30;
                             if (game.state == GameState.choose_org) {
-                                var selected_org = orgs.get(event.key.keysym.scancode - 30);
+                                var selected_org = orgs.get(i);
                                 std.debug.print("Selected: {s}\n", .{selected_org.label});
                                 player.org = selected_org;
                                 game.state = GameState.org_founded;
+                                // game.state = GameState.dev_points_spent;
+                            }
+                            else if (game.state == GameState.realm_founded and i < unit.units.len) {
+                                var selected_unit = unit.units[i];
+                                std.debug.print("Selected: {s}\n", .{selected_unit.name});
+                                player.org.units[0] = selected_unit;
+                                std.debug.print("units: {s}", .{player.org.units[0]});
                             }
                             
                         },
@@ -259,7 +274,7 @@ pub fn main() anyerror!void {
             }
         }
         
-        if (@enumToInt(game.state) >= @enumToInt(GameState.org_founded)) {
+        if (@enumToInt(game.state) >= @enumToInt(GameState.tier_i_units_mustered)) {
             const realm_dest = c.SDL_Rect{
                 .x = stronghold.x,
                 .y = stronghold.y  - 400,
@@ -269,7 +284,7 @@ pub fn main() anyerror!void {
             sdlAssertZero(c.SDL_RenderCopy(renderer, stronghold_texture, &src_rect, &realm_dest));
             
             var buf: [105]u8 = undefined;
-            const msg = try std.fmt.bufPrint(&buf, "{s}", .{enemy.realm.label});
+            const msg = try std.fmt.bufPrint(&buf, "Enemy {s}", .{enemy.realm.label});
             try drawText(info, stronghold.x, realm_dest.y+realm_dest.h+10, 
                 msg, allocator, renderer, &glyph_map);
             //    game.state = GameState.realm_founded;
@@ -302,7 +317,21 @@ pub fn main() anyerror!void {
                 );
             }
         }
-        
+        if (game.state == GameState.realm_founded) {
+            try drawText(info, 10, 10,
+                "Muster a UNIT of your choosing:",
+                allocator, renderer, &glyph_map
+            );
+            for(unit.units) |u, k| {
+                var buf: [100]u8 = undefined;
+                const choices = try std.fmt.bufPrint(&buf, "{d} ~ {s}", .{@intCast(i32, k)+1, u.name});
+                try drawText(
+                    info, 32, (10+1*32)+@intCast(i32, k)*32,
+                    choices,
+                    allocator, renderer, &glyph_map
+                );
+            }
+        }
         c.SDL_RenderPresent(renderer);
         game.time += 1;
         // std.debug.print("{d}\n", .{game.time});
