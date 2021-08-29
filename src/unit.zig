@@ -7,12 +7,18 @@ pub const UnitType = enum {
     siege,
 };
 
-// pub const Trait = enum {
-//     adaptable,
-//     dead,
-//     harrowing,
-//     relentless,
-// };
+pub const Trait = struct {
+    type: enum {
+        adaptable,
+        dead,
+        harrowing,
+        relentless,
+    }
+    
+};
+
+pub const DOMAIN_MAX_UNITS = 4;
+pub const DOMAIN_MAX_TRAITS = 3;
 
 pub const Ancestry = enum {
     dragonborn,
@@ -32,6 +38,7 @@ pub const Ancestry = enum {
     goblinoid,
 };
 pub const UnitCondition = enum {
+    none,
     broken,
     disbanded,
     disorganized,
@@ -54,11 +61,19 @@ pub const Unit = struct {
     mor: i8,
     com: i8,
     dmg: u8,
-    // traits: [3]Trait,
+    slots: [DOMAIN_MAX_TRAITS]Trait,
+    active_slots: usize,
     attacks: u8,
     movement: u8,
     ancestry: Ancestry,
     condition: UnitCondition,
+    pub fn assign_trait(self: *Unit, t: Trait) []Trait {
+        if (self.active_slots == self.slots.len) 
+            @panic("Too many trais!");
+        self.slots[self.active_slots] = t;
+        self.active_slots += 1;
+        return self.slots[0..self.active_slots];
+    }
 };
 
 pub const human_infantry = Unit {
@@ -73,108 +88,10 @@ pub const human_infantry = Unit {
     .mor = 1,
     .com = 2,
     .dmg = 1,
-    // .traits = .{Trait.adaptable},
+    .slots = undefined,
+    .active_slots = 0,
     .attacks = 1,
     .movement = 1,
     .ancestry = Ancestry.human,
     .condition = undefined,
-};
-pub const human_artilery = Unit {
-    .name = "Human artilery",
-    .size = 6,
-    .tier = 1,
-    .type = UnitType.artilery,
-    .atk = 3,
-    .def = 10,
-    .pow = 2,
-    .tou = 8,
-    .mor = 1,
-    .com = 2,
-    .dmg = 1,
-    // .traits = .{Trait.adaptable},
-    .attacks = 1,
-    .movement = 1,
-    .ancestry = Ancestry.human,
-    .condition = undefined,
-};
-pub const human_cavalry = Unit {
-    .name = "Human Cavalry",
-    .size = 6,
-    .tier = 1,
-    .type = UnitType.cavalry,
-    .atk = 3,
-    .def = 12,
-    .pow = 3,
-    .tou = 10,
-    .mor = 1,
-    .com = 1,
-    .dmg = 2,
-    // .traits = .{Trait.adaptable},
-    .attacks = 1,
-    .movement = 1,
-    .ancestry = Ancestry.human,
-    .condition = undefined,
-};
-pub const zombie_infantry = Unit {
-    .name = "Zombie Infantry",
-    .size = 6,
-    .tier = 1,
-    .type = UnitType.infantry,
-    .atk = 2,
-    .def = 11,
-    .pow = 1,
-    .tou = 13,
-    .mor = 0,
-    .com = 1,
-    // .traits = .{Trait.dead, Trait.horrowing, Trait.relentless},
-    .dmg = 1,
-    .attacks = 1,
-    .movement = 1,
-    .ancestry = Ancestry.undead,
-    .condition = undefined,
-};
-pub const skeletal_artilery = Unit {
-    .name = "Skeletal Archers",
-    .size = 4,
-    .tier = 1,
-    .type = UnitType.artilery,
-    .atk = 3,
-    .def = 9,
-    .pow = 1,
-    .tou = 8,
-    .mor = 0,
-    .com = 0,
-    // .traits = .{Trait.dead, Trait.horrowing, Trait.relentless},
-    .dmg = 1,
-    .attacks = 1,
-    .movement = 1,
-    .ancestry = Ancestry.undead,
-    .condition = undefined,
-};
-pub const skeletal_cavalry = Unit {
-    .name = "Skeletal Cavalry",
-    .size = 4,
-    .tier = 1,
-    .type = UnitType.cavalry,
-    .atk = 3,
-    .def = 11,
-    .pow = 2,
-    .tou = 10,
-    .mor = 0,
-    .com = 0,
-    // .traits = .{Trait.dead, Trait.horrowing, Trait.relentless},
-    .dmg = 2,
-    .attacks = 1,
-    .movement = 1,
-    .ancestry = Ancestry.undead,
-    .condition = undefined,
-};
-
-pub const units: [6]Unit = .{
-    human_infantry,
-    human_artilery,
-    human_cavalry,
-    zombie_infantry,
-    skeletal_artilery,
-    skeletal_cavalry,
 };

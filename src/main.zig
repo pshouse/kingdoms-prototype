@@ -102,6 +102,8 @@ const Game = struct {
 pub fn main() anyerror!void {
     var allocator = std.heap.page_allocator;
     
+    var units = init_units();
+
     var orgs = Orgs{};
     defer orgs.deinit(allocator);
     
@@ -222,8 +224,9 @@ pub fn main() anyerror!void {
                                 game.state = GameState.org_founded;
                                 // game.state = GameState.dev_points_spent;
                             }
-                            else if (game.state == GameState.realm_founded and i < unit.units.len) {
-                                var selected_unit = unit.units[i];
+                            else if (game.state == GameState.realm_founded and i < units.len) {
+                            // else if (game.state == GameState.realm_founded and i < 6) {
+                                var selected_unit = units[i];
                                 std.debug.print("Selected: {s}\n", .{selected_unit.name});
                                 player.org.units[0] = selected_unit;
                                 std.debug.print("units: {s}", .{player.org.units[0]});
@@ -322,7 +325,7 @@ pub fn main() anyerror!void {
                 "Muster a UNIT of your choosing:",
                 allocator, renderer, &glyph_map
             );
-            for(unit.units) |u, k| {
+            for(units) |u, k| {
                 var buf: [100]u8 = undefined;
                 const choices = try std.fmt.bufPrint(&buf, "{d} ~ {s}", .{@intCast(i32, k)+1, u.name});
                 try drawText(
@@ -338,6 +341,142 @@ pub fn main() anyerror!void {
     }
 }
 
+fn init_units() [6]unit.Unit {
+    var human_infantry = unit.Unit {
+        .name = "Human Infantry",
+        .size = 6,
+        .tier = 1,
+        .type = unit.UnitType.infantry,
+        .atk = 3,
+        .def = 12,
+        .pow = 2,
+        .tou = 12,
+        .mor = 1,
+        .com = 2,
+        .dmg = 1,
+        .slots = undefined,
+        .active_slots = 0,
+        .attacks = 1,
+        .movement = 1,
+        .ancestry = unit.Ancestry.human,
+        .condition = undefined,
+    };
+
+    _ = human_infantry.assign_trait(.{ .type = .adaptable });
+    // std.debug.print("unit_traits: {s}", .{unit_traits});
+    
+    var human_artilery = unit.Unit {
+        .name = "Human artilery",
+        .size = 6,
+        .tier = 1,
+        .type = unit.UnitType.artilery,
+        .atk = 3,
+        .def = 10,
+        .pow = 2,
+        .tou = 8,
+        .mor = 1,
+        .com = 2,
+        .dmg = 1,
+        .slots = undefined,
+        .active_slots = 0,
+        .attacks = 1,
+        .movement = 1,
+        .ancestry = unit.Ancestry.human,
+        .condition = undefined,
+    };
+    _ = human_artilery.assign_trait(.{.type = .adaptable});
+    var human_cavalry = unit.Unit {
+        .name = "Human Cavalry",
+        .size = 6,
+        .tier = 1,
+        .type = unit.UnitType.cavalry,
+        .atk = 3,
+        .def = 12,
+        .pow = 3,
+        .tou = 10,
+        .mor = 1,
+        .com = 1,
+        .dmg = 2,
+        .slots = undefined,
+        .active_slots = 0,
+        .attacks = 1,
+        .movement = 1,
+        .ancestry = unit.Ancestry.human,
+        .condition = undefined,
+    };
+     _ = human_cavalry.assign_trait(.{.type = .adaptable});
+    var zombie_infantry = unit.Unit {
+        .name = "Zombie Infantry",
+        .size = 6,
+        .tier = 1,
+        .type = unit.UnitType.infantry,
+        .atk = 2,
+        .def = 11,
+        .pow = 1,
+        .tou = 13,
+        .mor = 0,
+        .com = 1,
+        .slots = undefined,
+        .active_slots = 0,
+        .dmg = 1,
+        .attacks = 1,
+        .movement = 1,
+        .ancestry = unit.Ancestry.undead,
+        .condition = undefined,
+    };
+     _ = zombie_infantry.assign_trait(.{.type = .dead});
+     _ = zombie_infantry.assign_trait(.{.type = .harrowing});
+     _ = zombie_infantry.assign_trait(.{.type = .relentless});
+
+    var skeletal_artilery = unit.Unit {
+        .name = "Skeletal Archers",
+        .size = 4,
+        .tier = 1,
+        .type = unit.UnitType.artilery,
+        .atk = 3,
+        .def = 9,
+        .pow = 1,
+        .tou = 8,
+        .mor = 0,
+        .com = 0,
+        .slots = undefined,
+        .active_slots = 0,
+        .dmg = 1,
+        .attacks = 1,
+        .movement = 1,
+        .ancestry = unit.Ancestry.undead,
+        .condition = undefined,
+    };
+
+    var skeletal_cavalry = unit.Unit {
+        .name = "Skeletal Cavalry",
+        .size = 4,
+        .tier = 1,
+        .type = unit.UnitType.cavalry,
+        .atk = 3,
+        .def = 11,
+        .pow = 2,
+        .tou = 10,
+        .mor = 0,
+        .com = 0,
+        .slots = undefined,
+        .active_slots = 0,
+        .dmg = 2,
+        .attacks = 1,
+        .movement = 1,
+        .ancestry = unit.Ancestry.undead,
+        .condition = undefined,
+    };
+
+    return .{
+        human_infantry,
+        human_artilery,
+        human_cavalry,
+        zombie_infantry,
+        skeletal_artilery,
+        skeletal_cavalry,
+    };
+}
 fn drawText(info: c.stbtt_fontinfo, x0: i32, y0: i32, 
     text:  []const u8, allocator: *std.mem.Allocator, 
     renderer: *c.SDL_Renderer, glyph_map: *std.AutoHashMap(u8, GlyphMapEntry)) anyerror!void {
