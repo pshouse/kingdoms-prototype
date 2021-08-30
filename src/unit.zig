@@ -17,7 +17,6 @@ pub const Trait = struct {
     
 };
 
-pub const DOMAIN_MAX_UNITS = 4;
 pub const DOMAIN_MAX_TRAITS = 3;
 
 pub const Ancestry = enum {

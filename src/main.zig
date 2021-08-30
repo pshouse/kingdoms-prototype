@@ -30,13 +30,22 @@ const orgLabels: [8][]const u8 = .{
     "Relious Order",
     "Underworld Syndicate",
 };
+const DOMAIN_MAX_UNITS = 4;
 
 const Org = struct {
     type: OrgType,
     size: i32,
     label: []const u8,
     dev_points: i32,
-    units: [4]unit.Unit,
+    units: [DOMAIN_MAX_UNITS]unit.Unit,
+    active_units: usize,
+    pub fn add_unit(self: *Org, u: unit.Unit) []unit.Unit {
+        if (self.active_units == self.units.len) 
+            @panic("Too many units!");
+        self.units[self.active_units] = u;
+        self.active_units += 1;
+        return self.units[0..self.active_units];
+    }
     pub fn turns() i32 {
         return size + 4;
     }
@@ -69,6 +78,15 @@ const Realm = struct {
     type: RealmType,
     size: i32,
     label: []const u8,
+    units: [DOMAIN_MAX_UNITS]unit.Unit,
+    active_units: usize,
+    pub fn add_unit(self: *Realm, u: unit.Unit) []unit.Unit {
+        if (self.active_units == self.units.len) 
+            @panic("Too many units!");
+        self.units[self.active_units] = u;
+        self.active_units += 1;
+        return self.units[0..self.active_units];
+    }
     pub fn turns() i32 {
         return size + 4;
     }
@@ -78,10 +96,12 @@ const Realms = std.MultiArrayList(Realm);
 
 const Player = struct {
     org: Org,
+    initiative: u32,
 };
 
 const Enemy = struct {
     realm: Realm,
+    initiative: u32,
 };
 
 const GameState = enum(u32) {
@@ -92,6 +112,7 @@ const GameState = enum(u32) {
     realm_founded,
     dev_points_spent,
     tier_i_units_mustered,
+    units_deployed,
 };
 
 const Game = struct {
@@ -102,7 +123,7 @@ const Game = struct {
 pub fn main() anyerror!void {
     var allocator = std.heap.page_allocator;
     
-    var units = init_units();
+    var units = initUnits();
 
     var orgs = Orgs{};
     defer orgs.deinit(allocator);
@@ -114,12 +135,14 @@ pub fn main() anyerror!void {
             .label = orgLabels[i],
             .dev_points = 8,
             .units = undefined,
+            .active_units = 0,
         };
         try orgs.append(allocator, org);
     }
     
     var player = Player{
         .org = undefined,
+        .initiative = 0,
     };
 
     var realms = Realms{};
@@ -130,6 +153,8 @@ pub fn main() anyerror!void {
             .type = realmType,
             .size = 1,
             .label = realmLabels[i],
+            .units = undefined,
+            .active_units = 0,
         };
         try realms.append(allocator, realm);
     }
@@ -138,8 +163,13 @@ pub fn main() anyerror!void {
     const realm_selected: u32 = 13;
     var enemy = Enemy {
         .realm = realms.get(realm_selected),
+        .initiative = 0,
     };
-
+    _ = enemy.realm.add_unit(units[3]);
+    _ = enemy.realm.add_unit(units[3]);
+    _ = enemy.realm.add_unit(units[4]);
+    _ = enemy.realm.add_unit(units[5]);
+    enemy.initiative = roll();
     var game = Game {
         .state = GameState.greetings,
         .time = 0,
@@ -202,7 +232,7 @@ pub fn main() anyerror!void {
     
     const stronghold = Stronghold {
         .x = (screen.w/2) - (148/2),
-        .y = 425,
+        .y = 425 - 32,
         .w = 148,
         .h = 128,
     };
@@ -227,9 +257,13 @@ pub fn main() anyerror!void {
                             else if (game.state == GameState.realm_founded and i < units.len) {
                             // else if (game.state == GameState.realm_founded and i < 6) {
                                 var selected_unit = units[i];
-                                std.debug.print("Selected: {s}\n", .{selected_unit.name});
-                                player.org.units[0] = selected_unit;
-                                std.debug.print("units: {s}", .{player.org.units[0]});
+                                // std.debug.print("Selected: {s}\n", .{selected_unit.name});
+                                var tmp = player.org.add_unit(selected_unit);
+                                // std.debug.print("units: {s}", .{tmp});
+                                if (tmp.len == DOMAIN_MAX_UNITS) {
+                                    game.state = GameState.tier_i_units_mustered;
+                                    player.initiative = roll();
+                                }
                             }
                             
                         },
@@ -273,7 +307,17 @@ pub fn main() anyerror!void {
                 const msg = try std.fmt.bufPrint(&buf, "Your {s}", .{player.org.label});
                 try drawText(info, stronghold.x, stronghold.y+stronghold.h+10, 
                     msg, allocator, renderer, &glyph_map);
-                game.state = GameState.realm_founded;
+                const msg_units = try std.fmt.bufPrint(&buf, "Units ~ {d} of {d}", 
+                    .{ player.org.active_units, DOMAIN_MAX_UNITS });
+                try drawText(info, stronghold.x, stronghold.y+stronghold.h+10+32, 
+                    msg_units, allocator, renderer, &glyph_map);
+                if (player.org.active_units < DOMAIN_MAX_UNITS) 
+                    game.state = GameState.realm_founded;
+                if (player.initiative > 0) {
+                    const msg_init = try std.fmt.bufPrint(&buf, "Your Initiative is {d}", .{player.initiative});
+                    try drawText(info, stronghold.x, stronghold.y-(32*2), 
+                        msg_init, allocator, renderer, &glyph_map);
+                    }
             }
         }
         
@@ -290,7 +334,15 @@ pub fn main() anyerror!void {
             const msg = try std.fmt.bufPrint(&buf, "Enemy {s}", .{enemy.realm.label});
             try drawText(info, stronghold.x, realm_dest.y+realm_dest.h+10, 
                 msg, allocator, renderer, &glyph_map);
+            const msg2= try std.fmt.bufPrint(&buf, "Units Mustered ~ {d}", .{enemy.realm.active_units});
+            try drawText(info, stronghold.x, realm_dest.y+realm_dest.h+10+32, 
+                msg2, allocator, renderer, &glyph_map);
             //    game.state = GameState.realm_founded;
+            if (game.state == GameState.tier_i_units_mustered) {
+                const msg_init = try std.fmt.bufPrint(&buf, "Enemey Initiative is {d}", .{enemy.initiative});
+                try drawText(info, stronghold.x, realm_dest.y+realm_dest.h+10+(32*3), 
+                    msg_init, allocator, renderer, &glyph_map);
+            }
             
         }
         // render some text
@@ -341,7 +393,7 @@ pub fn main() anyerror!void {
     }
 }
 
-fn init_units() [6]unit.Unit {
+fn initUnits() [6]unit.Unit {
     var human_infantry = unit.Unit {
         .name = "Human Infantry",
         .size = 6,
@@ -476,6 +528,15 @@ fn init_units() [6]unit.Unit {
         skeletal_artilery,
         skeletal_cavalry,
     };
+}
+fn roll() u32 {
+    return std.crypto.random.intRangeAtMost(u32, 1, 20);
+}
+fn rollAdvantage() u32 {
+    return max(roll(), roll());
+}
+fn rollDisadvantage() u32 {
+    return min(roll(), roll());
 }
 fn drawText(info: c.stbtt_fontinfo, x0: i32, y0: i32, 
     text:  []const u8, allocator: *std.mem.Allocator, 
