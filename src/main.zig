@@ -118,7 +118,86 @@ const GameState = enum(u32) {
 const Game = struct {
     state: GameState,
     time: u64,
+    rounds: u32,
 };
+
+const Locus = struct {
+    rank: enum {rear, center, reserve, vanguard},
+    unit: unit.Unit,
+    occupied: bool,
+    collapsed: bool,
+    fn deploy_unit(self: *Locus, u: unit.Unit) bool {
+        if (u.type == unit.UnitType.artilery and self.rank != center)
+            return false;
+        if (u.type == unit.UnitType.cavalry)
+            return false;
+        self.unit = u;
+        self.occupied = true;
+        return true;
+    }
+};
+
+const north_side = [4][5]Locus{
+    [_]Locus{
+            .{.rank=.rear, .unit=undefined, .occupied=false, .collapsed=false},
+            .{.rank=.rear, .unit=undefined, .occupied=false, .collapsed=false},
+            .{.rank=.rear, .unit=undefined, .occupied=false, .collapsed=false},
+            .{.rank=.rear, .unit=undefined, .occupied=false, .collapsed=false},
+            .{.rank=.rear, .unit=undefined, .occupied=false, .collapsed=false},
+    },
+    [_]Locus{
+            .{.rank=.center, .unit=undefined, .occupied=false, .collapsed=false},
+            .{.rank=.center, .unit=undefined, .occupied=false, .collapsed=false},
+            .{.rank=.center, .unit=undefined, .occupied=false, .collapsed=false},
+            .{.rank=.center, .unit=undefined, .occupied=false, .collapsed=false},
+            .{.rank=.center, .unit=undefined, .occupied=false, .collapsed=false},
+    },
+    [_]Locus{
+            .{.rank=.reserve, .unit=undefined, .occupied=false, .collapsed=false},
+            .{.rank=.reserve, .unit=undefined, .occupied=false, .collapsed=false},
+            .{.rank=.reserve, .unit=undefined, .occupied=false, .collapsed=false},
+            .{.rank=.reserve, .unit=undefined, .occupied=false, .collapsed=false},
+            .{.rank=.reserve, .unit=undefined, .occupied=false, .collapsed=false},
+    },
+    [_]Locus{
+            .{.rank=.vanguard, .unit=undefined, .occupied=false, .collapsed=false},
+            .{.rank=.vanguard, .unit=undefined, .occupied=false, .collapsed=false},
+            .{.rank=.vanguard, .unit=undefined, .occupied=false, .collapsed=false},
+            .{.rank=.vanguard, .unit=undefined, .occupied=false, .collapsed=false},
+            .{.rank=.vanguard, .unit=undefined, .occupied=false, .collapsed=false},
+    },
+};
+const south_side = [4][5]Locus{
+    [_]Locus{
+            .{.rank=.vanguard, .unit=undefined, .occupied=false, .collapsed=false},
+            .{.rank=.vanguard, .unit=undefined, .occupied=false, .collapsed=false},
+            .{.rank=.vanguard, .unit=undefined, .occupied=false, .collapsed=false},
+            .{.rank=.vanguard, .unit=undefined, .occupied=false, .collapsed=false},
+            .{.rank=.vanguard, .unit=undefined, .occupied=false, .collapsed=false},
+    },
+    [_]Locus{
+            .{.rank=.reserve, .unit=undefined, .occupied=false, .collapsed=false},
+            .{.rank=.reserve, .unit=undefined, .occupied=false, .collapsed=false},
+            .{.rank=.reserve, .unit=undefined, .occupied=false, .collapsed=false},
+            .{.rank=.reserve, .unit=undefined, .occupied=false, .collapsed=false},
+            .{.rank=.reserve, .unit=undefined, .occupied=false, .collapsed=false},
+    },
+    [_]Locus{
+            .{.rank=.center, .unit=undefined, .occupied=false, .collapsed=false},
+            .{.rank=.center, .unit=undefined, .occupied=false, .collapsed=false},
+            .{.rank=.center, .unit=undefined, .occupied=false, .collapsed=false},
+            .{.rank=.center, .unit=undefined, .occupied=false, .collapsed=false},
+            .{.rank=.center, .unit=undefined, .occupied=false, .collapsed=false},
+    },
+    [_]Locus{
+            .{.rank=.rear, .unit=undefined, .occupied=false, .collapsed=false},
+            .{.rank=.rear, .unit=undefined, .occupied=false, .collapsed=false},
+            .{.rank=.rear, .unit=undefined, .occupied=false, .collapsed=false},
+            .{.rank=.rear, .unit=undefined, .occupied=false, .collapsed=false},
+            .{.rank=.rear, .unit=undefined, .occupied=false, .collapsed=false},
+    },
+};
+const battlefield = .{north_side, south_side};
 
 pub fn main() anyerror!void {
     var allocator = std.heap.page_allocator;
@@ -173,6 +252,7 @@ pub fn main() anyerror!void {
     var game = Game {
         .state = GameState.greetings,
         .time = 0,
+        .rounds = 0,
     };
 
     var glyph_map = std.AutoHashMap(u8, GlyphMapEntry).init(allocator);
@@ -406,9 +486,10 @@ fn initUnits() [6]unit.Unit {
         .mor = 1,
         .com = 2,
         .dmg = 1,
-        .slots = undefined,
-        .active_slots = 0,
+        .traits = undefined,
+        .active_traits = 0,
         .attacks = 1,
+        .reactions = 1,
         .movement = 1,
         .ancestry = unit.Ancestry.human,
         .condition = undefined,
@@ -429,9 +510,10 @@ fn initUnits() [6]unit.Unit {
         .mor = 1,
         .com = 2,
         .dmg = 1,
-        .slots = undefined,
-        .active_slots = 0,
+        .traits = undefined,
+        .active_traits = 0,
         .attacks = 1,
+        .reactions = 1,
         .movement = 1,
         .ancestry = unit.Ancestry.human,
         .condition = undefined,
@@ -449,9 +531,10 @@ fn initUnits() [6]unit.Unit {
         .mor = 1,
         .com = 1,
         .dmg = 2,
-        .slots = undefined,
-        .active_slots = 0,
+        .traits = undefined,
+        .active_traits = 0,
         .attacks = 1,
+        .reactions = 1,
         .movement = 1,
         .ancestry = unit.Ancestry.human,
         .condition = undefined,
@@ -468,10 +551,11 @@ fn initUnits() [6]unit.Unit {
         .tou = 13,
         .mor = 0,
         .com = 1,
-        .slots = undefined,
-        .active_slots = 0,
+        .traits = undefined,
+        .active_traits = 0,
         .dmg = 1,
         .attacks = 1,
+        .reactions = 1,
         .movement = 1,
         .ancestry = unit.Ancestry.undead,
         .condition = undefined,
@@ -491,10 +575,11 @@ fn initUnits() [6]unit.Unit {
         .tou = 8,
         .mor = 0,
         .com = 0,
-        .slots = undefined,
-        .active_slots = 0,
+        .traits = undefined,
+        .active_traits = 0,
         .dmg = 1,
         .attacks = 1,
+        .reactions = 1,
         .movement = 1,
         .ancestry = unit.Ancestry.undead,
         .condition = undefined,
@@ -511,10 +596,11 @@ fn initUnits() [6]unit.Unit {
         .tou = 10,
         .mor = 0,
         .com = 0,
-        .slots = undefined,
-        .active_slots = 0,
+        .traits = undefined,
+        .active_traits = 0,
         .dmg = 2,
         .attacks = 1,
+        .reactions = 1,
         .movement = 1,
         .ancestry = unit.Ancestry.undead,
         .condition = undefined,

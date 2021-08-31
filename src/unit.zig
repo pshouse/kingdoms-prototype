@@ -60,18 +60,19 @@ pub const Unit = struct {
     mor: i8,
     com: i8,
     dmg: u8,
-    slots: [DOMAIN_MAX_TRAITS]Trait,
-    active_slots: usize,
+    traits: [DOMAIN_MAX_TRAITS]Trait,
+    active_traits: usize,
     attacks: u8,
     movement: u8,
+    reactions: u8,
     ancestry: Ancestry,
     condition: UnitCondition,
     pub fn assign_trait(self: *Unit, t: Trait) []Trait {
-        if (self.active_slots == self.slots.len) 
+        if (self.active_traits == self.traits.len) 
             @panic("Too many trais!");
-        self.slots[self.active_slots] = t;
-        self.active_slots += 1;
-        return self.slots[0..self.active_slots];
+        self.traits[self.active_traits] = t;
+        self.active_traits += 1;
+        return self.traits[0..self.active_traits];
     }
 };
 
